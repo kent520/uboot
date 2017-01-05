@@ -137,7 +137,7 @@ copyex:
 	bne	copyex
 #endif
 
-#ifdef CONFIG_S3C24X0
+//#ifdef CONFIG_S3C24X0
 	/* turn off the watchdog */
 
 # if defined(CONFIG_S3C2400)
@@ -149,6 +149,7 @@ copyex:
 #  define INTMSK	0x4A000008	/* Interrupt-Controller base addresses */
 #  define INTSUBMSK	0x4A00001C
 #  define CLKDIVN	0x4C000014	/* clock divisor register */
+#  define MPLLCON   0x4C000004  
 # endif
 
 	ldr	r0, =pWTCON
@@ -165,13 +166,32 @@ copyex:
 	ldr	r1, =0x3ff
 	ldr	r0, =INTSUBMSK
 	str	r1, [r0]
+#elif defined(CONFIG_S3C2440)//新增     
+		ldr r1, =0x7fff   
+		ldr r0, =INTSUBMSK	  
+		str r1, [r0]  
 # endif
+
 
 	/* FCLK:HCLK:PCLK = 1:2:4 */
 	/* default FCLK is 120 MHz ! */
-	ldr	r0, =CLKDIVN
-	mov	r1, #3
-	str	r1, [r0]
+#if defined(CONFIG_S3C2400) || defined(CONFIG_S3C2410) //修改   
+		/* FCLK:HCLK:PCLK = 1:2:4 */	  
+		/* default FCLK is 120 MHz ! */   
+		ldr r0, =CLKDIVN	  
+		mov r1, #3	  
+		str r1, [r0]  
+#elif defined(CONFIG_S3C2440)        //新增     
+		ldr r0, =CLKDIVN	  
+		mov r1, #0x05			 // FCLK:HCLK:PCLK=1:4:8, HDIVN=2,PDIVN=1	  
+		str r1, [r0]		  
+		mrc p15, 0, r1, c1, c0, 0		 /* 读出控制寄存器*/		   
+		orr r1, r1, #0xc0000000 		 /* 设置为“asynchronous bus mode?*/		  
+		mcr p15, 0, r1, c1, c0, 0		 /* 写入控制寄存器*/		 
+		ldr r0, =MPLLCON	  
+		ldr r1, =0x5c011				 //MPLL_400MHZ	   (0x5c<<12)|(0x01<<4)|(0x01)) 	  
+		str r1, [r0] 
+
 #endif	/* CONFIG_S3C24X0 */
 
 	/*
