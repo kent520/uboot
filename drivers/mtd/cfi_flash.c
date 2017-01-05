@@ -1687,8 +1687,8 @@ static int flash_detect_legacy(phys_addr_t base, int banknum)
 							   MAP_NOCACHE);
 				if (info->portwidth == FLASH_CFI_8BIT
 					&& info->interface == FLASH_CFI_X8X16) {
-					info->addr_unlock1 = 0x2AAA;
-					info->addr_unlock2 = 0x5555;
+					info->addr_unlock1 = 0x555;
+					info->addr_unlock2 = 0x2AA;
 				} else {
 					info->addr_unlock1 = 0x5555;
 					info->addr_unlock2 = 0x2AAA;
