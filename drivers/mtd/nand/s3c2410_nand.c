@@ -51,33 +51,20 @@ static void nand_read_buf(struct mtd_info *mtd, u_char *buf, int len)
 }
 #endif
 
-static void s3c2410_hwcontrol(struct mtd_info *mtd, int cmd, unsigned int ctrl)
+static void s3c2410_hwcontrol(struct mtd_info *mtd, int dat, unsigned int ctrl)
 {
-	struct nand_chip *chip = mtd->priv;
 	struct s3c2440_nand *nand = s3c2440_get_base_nand();
 
-	debug("hwcontrol(): 0x%02x 0x%02x\n", cmd, ctrl);
-
-	if (ctrl & NAND_CTRL_CHANGE) {
-		ulong IO_ADDR_W = (ulong)nand;
-
-		if (!(ctrl & NAND_CLE))
-			IO_ADDR_W |= S3C2410_ADDR_NCLE;
-		if (!(ctrl & NAND_ALE))
-			IO_ADDR_W |= S3C2410_ADDR_NALE;
-
-		chip->IO_ADDR_W = (void *)IO_ADDR_W;
-
-		if (ctrl & NAND_NCE)
-			writel(readl(&nand->nfconf) & ~S3C2410_NFCONF_nFCE,
-			       &nand->nfconf);
-		else
-			writel(readl(&nand->nfconf) | S3C2410_NFCONF_nFCE,
-			       &nand->nfconf);
+	if (ctrl & NAND_CLE)
+	{
+		/* 发命令 */
+		writeb(dat, &nand->nfcmd);
 	}
-
-	if (cmd != NAND_CMD_NONE)
-		writeb(cmd, chip->IO_ADDR_W);
+	else if(ctrl & NAND_ALE)
+	{
+		/* 发地址 */
+		writeb(dat, &nand->nfaddr);		
+	}
 }
 
 static int s3c2410_dev_ready(struct mtd_info *mtd)
@@ -121,6 +108,22 @@ static int s3c2440_nand_correct_data(struct mtd_info *mtd, u_char *dat,
 }
 #endif
 
+static void s3c2440_nand_select(struct mtd_info *mtd, int chipnr)
+{
+	struct s3c2440_nand *nand = s3c2440_get_base_nand();
+
+	switch (chipnr) {
+	case -1: /* 取消选中 */
+		nand->nfcont |= (1<<1);
+		break;
+	case 0:  /* 选中 */
+		nand->nfcont &= ~(1<<1);
+		break;
+
+	default:
+		BUG();
+	}
+}
 int board_nand_init(struct nand_chip *nand)
 {
 	u_int32_t cfg;
@@ -142,18 +145,22 @@ int board_nand_init(struct nand_chip *nand)
 	twrph0 = 8;
 	twrph1 = 8;
 #endif
-
+#if 0
 	cfg = S3C2410_NFCONF_EN;
 	cfg |= S3C2410_NFCONF_TACLS(tacls - 1);
 	cfg |= S3C2410_NFCONF_TWRPH0(twrph0 - 1);
 	cfg |= S3C2410_NFCONF_TWRPH1(twrph1 - 1);
 	writel(cfg, &nand_reg->nfconf);
+#endif
+	cfg = ((tacls-1)<<12)|((twrph0-1)<<8)|((twrph1-1)<<4);
+	writel(cfg, &nand_reg->nfconf);
+	writel((1<<4)|(1<<1)|(1<<0), &nand_reg->nfcont);
 
 	/* initialize nand_chip data structure */
 	nand->IO_ADDR_R = (void *)&nand_reg->nfdata;
 	nand->IO_ADDR_W = (void *)&nand_reg->nfdata;
 
-	nand->select_chip = NULL;
+	nand->select_chip = s3c2440_nand_select;
 
 	/* read_buf and write_buf are default */
 	/* read_byte and write_byte are default */

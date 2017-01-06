@@ -115,7 +115,6 @@ typedef volatile unsigned char	vu_char;
 #include <part.h>
 #include <flash.h>
 #include <image.h>
-#define DEBUG 
 #ifdef DEBUG
 #define _DEBUG	1
 #else
